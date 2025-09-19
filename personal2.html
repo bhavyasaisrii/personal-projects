@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KLH Event Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- QR code lib, icons, Google fonts -->
+  <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+  <link rel="icon" href="favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #e75480;
+      --accent2: #8f48b8;
+      --surface: #fff;
+      --background: #faf7fb;
+      --on-surface: #342b40;
+      --shadow: 0 6px 30px rgba(143,72,184,0.09);
+      --radius: 15px;
+      --transition: 0.28s ease;
+    }
+    [data-theme="dark"] {
+      --surface: #271539;
+      --background: #170d22;
+      --on-surface: #fff;
+    }
+    html {
+      scroll-behavior: smooth;
+      background: var(--background);
+    }
+    body {
+      font-family: 'Montserrat',sans-serif;
+      color: var(--on-surface);
+      margin: 0;
+      background: var(--background);
+    }
+    .container {
+      max-width: 610px;
+      margin: 32px auto 32px auto;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2.5rem 2rem;
+    }
+    .flex-sb { display: flex; justify-content: space-between; align-items: center; }
+    .logo { color: var(--accent); font-size: 1.9em; font-weight: bold; margin-bottom: 4px; }
+    .subtitle { font-size: 1.13em; color: var(--accent2); margin-bottom: 16px; }
+    .toggle-theme { background:transparent;border:0;font-size:1.2em;cursor:pointer;float:right }
+
+    .form { margin-bottom: 2.3rem; }
+    input, select, button {
+      display: block;
+      width: 100%;
+      margin: 17px 0 0 0;
+      border: 1.4px solid var(--accent2);
+      border-radius: 7px;
+      padding: 13px;
+      font-size: 1em;
+      background: var(--background);
+      color: var(--on-surface);
+      transition: border var(--transition), box-shadow var(--transition);
+    }
+    input:focus, select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 2px 0 var(--accent2, #8f48b8); }
+    button { background: linear-gradient(120deg,var(--accent) 50%,var(--accent2) 100%); color: #fff; border: none; font-weight:700; cursor:pointer; margin:18px 0 0 0;}
+    button:active { opacity: .88;}
+    .link { color: var(--accent2); text-decoration: underline; cursor: pointer; background:none; border:none; font-size:1em; }
+    .tabs {display:flex;gap:10px;padding:4px 0;}
+    .tab-btn {
+      flex: 1 0 0;
+      background: var(--accent2);
+      color: #fff;
+      border-radius: 11px 11px 0 0;
+      font-weight:600;
+      padding:8px 2px;
+      cursor:pointer;
+      border:none;
+      transition:background var(--transition);
+      opacity:.72;
+    }
+    .tab-btn.active { background: var(--accent); opacity:1;}
+    .hidden { display: none !important; }
+    .event-card, .reg-card {
+      background: var(--background);
+      border-left: 5px solid var(--accent2);
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin: 17px 0;
+      box-shadow: 0 2px 12px rgba(231,84,128,0.07);
+    }
+    .event-title { font-weight: bold; color: var(--accent2); font-size:1.07em;}
+    .event-time { color: var(--accent); font-size:0.98em;}
+    .venue { font-size:.98em; margin-bottom: 12px;}
+    .reminder-label { background: var(--accent2); color:#fff; border-radius:7px; padding:2px 9px; font-size:.93em;}
+    .profile-box {background:var(--background);padding:20px;border-radius:12px;margin:16px 0;}
+    .qr-box {margin: 10px 0 0 6px;display: flex;justify-content: flex-end;}
+    .share-btns {display:flex;gap:10px;margin:7px 0;}
+    .calendar-btn{background:#fef6fa;color:var(--accent2);border:1px solid var(--accent2);}
+    .badge {background: var(--accent); color: #fff; border-radius: 5px; padding: 2px 6px; font-size: .93em; margin-left: 7px;}
+    @media (max-width:670px){
+      .container {padding:10px 1px}
+    }
+  </style>
+</head>
+<body>
+<div class="container" data-theme="light">
+  <div class="flex-sb">
+    <div>
+      <span class="logo">KLH Events</span>
+      <div class="subtitle">Pro event registration & check-in</div>
+    </div>
+    <button title="Toggle dark/light theme" class="toggle-theme" id="theme-toggle">🌙</button>
+  </div>
+
+  <!-- Login/Register UI -->
+  <form id="login-form" class="form">
+    <h3>Sign In or Register</h3>
+    <input id="login-email" type="text" placeholder="Email or Phone" required pattern="^([\\w\\.-]+@[\\w\\.-]+\\.[A-Za-z]{2,6}|\\d{10,})$">
+    <button type="submit">Continue</button>
+  </form>
+
+  <form id="profile-form" class="form hidden">
+    <h3>Complete Your Profile</h3>
+    <input id="profile-name" placeholder="Full Name" required>
+    <select id="profile-year" required>
+      <option value="">Select year</option>
+      <option>1st Year</option>
+      <option>2nd Year</option>
+      <option>3rd Year</option>
+      <option>4th Year</option>
+    </select>
+    <input id="profile-dept" placeholder="Department" required>
+    <button type="submit">Save & Continue</button>
+  </form>
+  <!-- Main Dashboard -->  
+  <div id="dashboard" class="hidden">
+    <div class="tabs">
+      <button id="events-tab-btn" class="tab-btn active">Events</button>
+      <button id="registered-tab-btn" class="tab-btn">My Tickets</button>
+      <button id="profile-tab-btn" class="tab-btn">Profile</button>
+      <button id="admin-tab-btn" class="tab-btn hidden">Admin <span class="badge" id="adminbadge"></span></button>
+    </div>
+    <!-- All Events -->
+    <div id="events-tab">
+      <h3>Upcoming Events</h3>
+      <div id="event-list"></div>
+    </div>
+    <!-- My Registrations -->
+    <div id="registered-tab" class="hidden">
+      <h3>My Registrations</h3>
+      <div id="registered-list"></div>
+    </div>
+    <!-- Profile -->
+    <div id="profile-tab" class="hidden">
+      <h3>Your Profile</h3>
+      <div class="profile-box" id="profile-box"></div>
+      <button id="logout-btn" style="width:130px;margin-top:15px">Logout</button>
+    </div>
+    <!-- Admin Dashboard (Stub) -->
+    <div id="admin-tab" class="hidden">
+      <h3>Admin Panel</h3>
+      <p>Registrations, analytics, downloadable CSV, role management...</p>
+    </div>
+  </div>
+</div>
+<script>
+  // --- Theming: Dark/Light ---
+  const themeButton = document.getElementById("theme-toggle");
+  const htmlRoot = document.querySelector("[data-theme]");
+  let theme = localStorage.getItem("theme") || "light";
+  function setTheme(t) { 
+    htmlRoot.dataset.theme = t; 
+    localStorage.setItem("theme", t); 
+    themeButton.textContent = (t==="dark"?"☀️":"🌙");
+  }
+  themeButton.onclick = function() { setTheme(htmlRoot.dataset.theme==="dark"?"light":"dark"); };
+  setTheme(theme);
+
+  // --- Event Data (Demo) ---
+  const events = [
+    { id: 'e1', title:"Tech Expo 2025", date:"2025-09-20", time:"10:00-16:00", location:"Auditorium, B", price: 0, ticket: "Museum", },
+    { id: 'e2', title:"AI Workshop", date:"2025-09-22", time:"14:00-17:00", location:"Room 410, D", price: 99, ticket: "Workshop", },
+    { id: 'e3', title:"E-Sports Fest", date:"2025-09-25", time:"12:30-18:30", location:"Sports Hall", price: 50, ticket: "General", },
+    { id: 'e4', title:"Cultural Night", date:"2025-09-28", time:"18:00-21:00", location:"Open Arena", price: 0, ticket: "Open", }
+  ];
+  // --- State ---
+  let currentUser = JSON.parse(localStorage.getItem("klh_evt_user"));
+  let registrations = JSON.parse(localStorage.getItem("klh_evt_reg") || "[]");
+  let role = currentUser && currentUser.emailOrPhone==="admin@klh.com" ? "admin" : "user";
+
+  // --- Forms & Tabs ---
+  const loginForm = document.getElementById('login-form');
+  const profileForm = document.getElementById('profile-form');
+  const dashboard = document.getElementById('dashboard');
+  const eventList = document.getElementById('event-list');
+  const registeredList = document.getElementById('registered-list');
+  const profileBox = document.getElementById('profile-box');
+  // Tabs
+  const eventsTabBtn = document.getElementById('events-tab-btn');
+  const regTabBtn = document.getElementById('registered-tab-btn');
+  const profileTabBtn = document.getElementById('profile-tab-btn');
+  const adminTabBtn = document.getElementById('admin-tab-btn');
+  const adminBadge = document.getElementById('adminbadge');
+
+  const eventsTab = document.getElementById('events-tab');
+  const registeredTab = document.getElementById('registered-tab');
+  const profileTab = document.getElementById('profile-tab');
+  const adminTab = document.getElementById('admin-tab');
+  // ---- Tab Logic ----
+  function setTab(tab) {
+    ["events","registered","profile","admin"].forEach(x=>{
+      const b = {events:eventsTabBtn,registered:regTabBtn,profile:profileTabBtn,admin:adminTabBtn}[x];
+      const t = {events:eventsTab,registered:registeredTab,profile:profileTab,admin:adminTab}[x];
+      if (tab===x) { b.classList.add("active"); t.classList.remove("hidden"); }
+      else { b.classList.remove("active"); t.classList.add("hidden"); }
+    });
+  }
+  eventsTabBtn.onclick=()=>{ setTab("events"); renderEvents(); }
+  regTabBtn.onclick=()=>{ setTab("registered"); renderRegistrations(); }
+  profileTabBtn.onclick=()=>{ setTab("profile"); renderProfile(); }
+  adminTabBtn.onclick=()=>{ setTab("admin"); }
+
+  // --- Auth Logic ---
+  loginForm.onsubmit = function(e){
+    e.preventDefault();
+    const emailOrPhone = document.getElementById('login-email').value.trim();
+    if(emailOrPhone.match(/^([\w\.-]+@[\w\.-]+\.[A-Za-z]{2,6}|\d{10,})$/)){
+      currentUser = {emailOrPhone};
+      role = (emailOrPhone === "admin@klh.com" ? "admin" : "user");
+      localStorage.setItem("klh_evt_user", JSON.stringify(currentUser));
+      showProfileOrDashboard();
+    } else alert("Enter a valid email/phone.");
+  };
+  profileForm.onsubmit = function(e){
+    e.preventDefault();
+    currentUser.name = document.getElementById('profile-name').value;
+    currentUser.year = document.getElementById('profile-year').value;
+    currentUser.dept = document.getElementById('profile-dept').value;
+    localStorage.setItem("klh_evt_user", JSON.stringify(currentUser));
+    showProfileOrDashboard();
+  };
+
+  // --- Renderers / Features ---
+  function showProfileOrDashboard() {
+    loginForm.classList.add("hidden");
+    if (!currentUser.name || !currentUser.dept) {
+      profileForm.classList.remove("hidden");
+      dashboard.classList.add('hidden');
+    } else {
+      dashboard.classList.remove("hidden");
+      profileForm.classList.add("hidden");
+      if(role==="admin") {
+        adminTabBtn.classList.remove("hidden");
+        adminBadge.textContent = "New";
+      } else {
+        adminTabBtn.classList.add("hidden");
+        adminBadge.textContent = "";
+      }
+      setTab("events");
+      renderEvents();
+    }
+  }
+
+  function renderEvents() {
+    eventList.innerHTML = '';
+    events.forEach(ev=>{
+      const isReg = registrations.some(r=>r.user === currentUser.emailOrPhone && r.eventId === ev.id);
+      eventList.innerHTML += `
+      <div class="event-card">
+        <div class="event-title">${ev.title}</div>
+        <div class="event-time">Date: ${ev.date} | Time: ${ev.time.replace("-","–")}</div>
+        <div class="venue">Venue: ${ev.location} | Type: ${ev.ticket}
+          <span class="badge">${ev.price>0 ? "₹"+ev.price: "Free"}</span>
+        </div>
+        <div class="share-btns">
+          <button class="calendar-btn" onclick="addToCalendar('${ev.id}')">Add to Calendar</button>
+          <button class="calendar-btn" onclick="shareEvent('${ev.id}')">Share</button>
+        </div>
+        ${isReg
+        ? `<div class="qr-box"><canvas id="qr_${ev.id}" width="80" height="80"></canvas></div>
+           <div>
+             <span class="reminder-label">🎟️ Registered</span>
+             <button style="width:auto;margin-left:13px" onclick="toggleReminder('${ev.id}')">Reminder ON/OFF</button>
+           </div>`
+        : `<button onclick="registerEvent('${ev.id}')">${ev.price>0?"Buy Ticket":"Register"}</button>`
+        }
+      </div>`;
+    });
+    // Render QRs
+    events.forEach(ev=>{
+      if(registrations.some(r=>r.user === currentUser.emailOrPhone && r.eventId === ev.id)){
+        const cv = document.getElementById('qr_'+ev.id);
+        if(cv){
+          const qr = new QRious({ element: cv, value: `KLHEVT|${ev.id}|${currentUser.emailOrPhone}`, size: 80, background: "#fff", foreground: "#8f48b8" });
+        }
+      }
+    });
+  }
+  function registerEvent(eventId) {
+    if(!registrations.some(r=>r.user===currentUser.emailOrPhone && r.eventId===eventId)) {
+      registrations.push({user: currentUser.emailOrPhone, eventId, reminder: true, ticketId: "T-" + Date.now()});
+      localStorage.setItem("klh_evt_reg", JSON.stringify(registrations));
+      renderEvents(); 
+    }
+  }
+  function toggleReminder(eventId) {
+    for(let r of registrations){ if(r.user===currentUser.emailOrPhone && r.eventId===eventId){ r.reminder = !r.reminder; } }
+    localStorage.setItem("klh_evt_reg", JSON.stringify(registrations));
+    renderEvents();
+    renderRegistrations();
+  }
+  function renderRegistrations() {
+    let myRegs = registrations.filter(r=>r.user===currentUser.emailOrPhone);
+    registeredList.innerHTML = myRegs.length === 0 
+      ? '<div>No events registered.</div>'
+      : '';
+    myRegs.forEach(reg=>{
+      let ev = events.find(e=>e.id===reg.eventId);
+      if(ev){
+        registeredList.innerHTML += `
+        <div class="reg-card">
+          <div class="event-title">${ev.title}</div>
+          <div class="event-time">Date: ${ev.date} | Time: ${ev.time.replace("-","–")}</div>
+          <div class="venue">Venue: ${ev.location}</div>
+          <span class="reminder-label">${reg.reminder ? '🔔 Reminder ON' : '🔕 No Reminder'}</span>
+          <div class="qr-box"><canvas id="qrreg_${ev.id}" width="80" height="80"></canvas></div>
+        </div>`;
+      }
+    });
+    // QRs for Registered
+    myRegs.forEach(reg=>{
+      const ev = events.find(e=>e.id===reg.eventId);
+      const cv = document.getElementById("qrreg_" + reg.eventId);
+      if(ev && cv){
+        new QRious({ element: cv, value: `KLHEVT|${reg.eventId}|${currentUser.emailOrPhone}`, size: 80 });
+      }
+    });
+  }
+  function renderProfile() {
+    profileBox.innerHTML = `
+      <b>Name:</b> ${currentUser.name}<br>
+      <b>Year:</b> ${currentUser.year}<br>
+      <b>Dept:</b> ${currentUser.dept}<br>
+      <b>Email/Phone:</b> ${currentUser.emailOrPhone}<br>
+      <b>Role:</b> ${role}
+    `;
+  }
+  document.getElementById("logout-btn").onclick = function() {
+    localStorage.removeItem("klh_evt_user");
+    dashboard.classList.add("hidden");
+    loginForm.classList.remove("hidden");
+    profileForm.classList.add("hidden");
+    currentUser=null;
+  }
+
+  // Share logic (stub)
+  window.shareEvent = function(eventId){
+    let ev = events.find(e=>e.id===eventId);
+    if (navigator.share) {
+      navigator.share({ title: ev.title, text: `Join me at ${ev.title} (${ev.date}, ${ev.time} @ ${ev.location})`, url: location.href });
+    } else {
+      alert('Copy & share this event link:\n' + location.href + "#" + eventId);
+    }
+  }
+  // Add to calendar (stub: downloads .ics)
+  window.addToCalendar = function(eventId) {
+    let ev = events.find(e=>e.id===eventId);
+    if(ev){
+      let dtStart = ev.date.replace(/-/g,'') + "T" + ev.time.split('-')[0].replace(':','') + "00Z";
+      let dtEnd   = ev.date.replace(/-/g,'') + "T" + ev.time.split('-')[1].replace(':','') + "00Z";
+      let ics = [
+        "BEGIN:VCALENDAR","VERSION:2.0","BEGIN:VEVENT",
+        `SUMMARY:${ev.title}`,
+        `DTSTART:${dtStart}`,
+        `DTEND:${dtEnd}`,
+        `LOCATION:${ev.location}`,
+        "END:VEVENT","END:VCALENDAR"
+      ].join("\r\n");
+      let blob = new Blob([ics], {type:'text/calendar'});
+      let a = document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download="event.ics";
+      a.click();
+    }
+  }
+
+  // Admin panel is a stub. (Show role only if admin).
+  if(currentUser && role==="admin") adminTabBtn.classList.remove("hidden");
+
+  // Init
+  if (currentUser) showProfileOrDashboard();
+
+  // Notification reminders (in-browser, local demo)
+  if('Notification' in window) {
+    setInterval(()=>{
+      let now = new Date();
+      registrations.forEach(reg=>{
+        if(reg.user === currentUser?.emailOrPhone && reg.reminder) {
+          let ev = events.find(e=>e.id === reg.eventId);
+          if(ev){
+            let [h,m]=ev.time.split("-")[0].split(":"), eDt=new Date(ev.date+"T"+h.padStart(2,'0')+":"+m+":00");
+            if((eDt-now)<3400000 && (eDt-now)>0)
+              if(Notification.permission==="granted")
+                new Notification(`Upcoming: ${ev.title}`,{body:`${ev.date} @ ${ev.time}\nVenue:${ev.location}`});
+          }
+        }
+      });
+    }, 51000);
+  }
+</script>
+</body>
+</html>
