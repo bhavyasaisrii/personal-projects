@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Unbeatable Tic Tac Toe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #f6f8fc;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .wrapper {
+      max-width: 400px;
+      margin: 60px auto;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      border-radius: 20px;
+      background: #fff;
+      padding: 32px 24px 18px 24px;
+    }
+    h1 {
+      text-align: center;
+      color: #5649a6;
+      font-size: 2.3rem;
+      margin-bottom: 36px;
+      letter-spacing: 2px;
+    }
+    .board {
+      display: grid;
+      grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+    .cell {
+      width: 90px;
+      height: 90px;
+      background: #e7eafd;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      font-size: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+      border: none;
+      outline: none;
+    }
+    .cell:active {
+      background: #b1a0f8;
+    }
+    .cell.disabled {
+      cursor: default;
+    }
+    .status {
+      font-size: 1.2rem;
+      color: #222;
+      text-align: center;
+      min-height: 32px;
+    }
+    .btn {
+      display: block;
+      margin: 26px auto 0 auto;
+      padding: 10px 32px;
+      background: #5649a6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #6c57cd;
+    }
+    @media (max-width: 480px) {
+      .wrapper { max-width: 95vw; padding: 12px 4vw 16px 4vw; }
+      .board .cell { width: 60px; height: 60px; font-size: 1.4rem;}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Tic Tac Toe</h1>
+    <div id="board" class="board"></div>
+    <div id="status" class="status"></div>
+    <button id="restart" class="btn">Restart</button>
+  </div>
+  <script>
+    // --- Game State ---
+    const PLAYER = 'O';
+    const AI = 'X';
+
+    let board = Array(9).fill('');
+    let gameOver = false;
+
+    const boardDiv = document.getElementById('board');
+    const statusDiv = document.getElementById('status');
+    const restartBtn = document.getElementById('restart');
+
+    // --- Helper Functions ---
+    function drawBoard() {
+      boardDiv.innerHTML = '';
+      board.forEach((val, idx) => {
+        let cell = document.createElement('button');
+        cell.classList.add('cell');
+        if (val) cell.classList.add('disabled');
+        cell.textContent = val;
+        cell.disabled = !!val || gameOver;
+        cell.addEventListener('click', () => playerMove(idx));
+        boardDiv.appendChild(cell);
+      });
+    }
+    function showStatus(msg) {
+      statusDiv.textContent = msg;
+    }
+
+    function emptyIndices(brd) {
+      return brd.map((v, i) => v === '' ? i : null).filter(v => v !== null);
+    }
+    function winning(brd, player) {
+      const winStates = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+      return winStates.some(arr => arr.every(i=>brd[i]===player));
+    }
+    function checkDraw(brd) {
+      return emptyIndices(brd).length === 0 && !winning(brd, PLAYER) && !winning(brd, AI);
+    }
+
+    // --- Minimax Algorithm ---
+    function minimax(newBoard, turn) {
+      if (winning(newBoard, PLAYER)) return {score: -10};
+      if (winning(newBoard, AI))     return {score: 10};
+      if (emptyIndices(newBoard).length === 0) return {score: 0};
+
+      let moves = [];
+      for (let i of emptyIndices(newBoard)) {
+        let move = {};
+        move.index = i;
+        newBoard[i] = turn;
+        if (turn === AI) {
+          let result = minimax(newBoard, PLAYER);
+          move.score = result.score;
+        } else {
+          let result = minimax(newBoard, AI);
+          move.score = result.score;
+        }
+        newBoard[i] = '';
+        moves.push(move);
+      }
+      let bestMove;
+      if (turn === AI) {
+        let bestScore = -Infinity;
+        for (let i=0;i<moves.length;i++) {
+          if (moves[i].score > bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      } else {
+        let bestScore = Infinity;
+        for (let i=0;i<moves.length;i++) {
+          if (moves[i].score < bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      }
+      return moves[bestMove];
+    }
+
+    // --- Gameplay Logic ---
+    function playerMove(idx) {
+      if (gameOver || board[idx]) return;
+      board[idx] = PLAYER;
+      drawBoard();
+      if (winning(board, PLAYER)) {
+        endGame('You win! (Impossible!)');
+        return;
+      }
+      if (checkDraw(board)) {
+        endGame('It\'s a draw!');
+        return;
+      }
+      setTimeout(aiMove, 350); // Delay for UX
+    }
+    function aiMove() {
+      let move = minimax(board.slice(), AI).index;
+      board[move] = AI;
+      drawBoard();
+      if (winning(board, AI)) {
+        endGame('System wins!');
+        return;
+      }
+      if (checkDraw(board)) {
+        endGame('It\'s a draw!');
+        return;
+      }
+    }
+    function endGame(msg) {
+      gameOver = true;
+      drawBoard();
+      showStatus(msg);
+    }
+    function resetGame() {
+      board = Array(9).fill('');
+      gameOver = false;
+      showStatus('');
+      drawBoard();
+      // Optionally let AI start
+      // aiMove();
+    }
+
+    // --- Startup ---
+    restartBtn.onclick = resetGame;
+    resetGame(); // Draw initial board
+    showStatus('Your turn!');
+
+  </script>
+</body>
+</html>
