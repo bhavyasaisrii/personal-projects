@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Advanced To-Do List</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0;}
+.container {max-width: 500px; margin: 30px auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);}
+input, button, select {margin: 10px 0; padding: 8px; font-size: 16px;}
+button {background: #5b39ad; color: #fff; border: none; border-radius: 4px; cursor: pointer;}
+button:hover {background: #3f276c;}
+ul {list-style: none; padding: 0;}
+li {margin: 8px 0; background: #efefef; padding: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;}
+.complete {text-decoration: line-through; color: gray;}
+.logout-btn {float: right;}
+label {margin-top: 10px;}
+</style>
+</head>
+<body>
+<div class="container" id="login-box">
+  <h2>Login</h2>
+  <input type="text" id="user" placeholder="Username"><br>
+  <input type="password" id="pass" placeholder="Password"><br>
+  <button onclick="login()">Login / Register</button>
+</div>
+
+<div class="container" id="todo-box" style="display:none;">
+  <button class="logout-btn" onclick="logout()">Logout</button>
+  <h2>My To-Do List</h2>
+  <div>
+    <input type="text" id="task" placeholder="New Task">
+    <input type="date" id="task-date">
+    <button onclick="addTask()">Add</button>
+  </div>
+  <ul id="list"></ul>
+  <h4>Calendar: <span id="selected-date"></span></h4>
+  <input type="month" id="month-picker" onchange="showCalendar()">
+  <div id="calendar"></div>
+</div>
+
+<script>
+let currentUser = null;
+
+function show(id){ document.getElementById(id).style.display='block'; }
+function hide(id){ document.getElementById(id).style.display='none'; }
+
+function login() {
+  let user = document.getElementById('user').value.trim();
+  let pass = document.getElementById('pass').value;
+  if(!user || !pass) { alert('Enter username and password.'); return; }
+  let stored = localStorage.getItem('user_' + user);
+  if(stored && JSON.parse(stored).pass !== pass) {
+    alert('Wrong password!'); return;
+  }
+  localStorage.setItem('user_' + user, JSON.stringify({pass:pass, tasks: getUserData(user)?.tasks || []}));
+  currentUser = user;
+  hide('login-box'); show('todo-box');
+  showTasks();
+  showCalendar();
+}
+function logout() {
+  currentUser = null;
+  hide('todo-box'); show('login-box');
+}
+function getUserData(user) {
+  let stored = localStorage.getItem('user_' + user);
+  return stored ? JSON.parse(stored) : null;
+}
+function saveTasks(tasks) {
+  let data = getUserData(currentUser);
+  data.tasks = tasks;
+  localStorage.setItem('user_' + currentUser, JSON.stringify(data));
+}
+function showTasks() {
+  let data = getUserData(currentUser);
+  let ul = document.getElementById('list'); ul.innerHTML='';
+  if(!data) return;
+  data.tasks.forEach((t,i)=>{
+    let li = document.createElement('li');
+    li.innerHTML = `<span class="${t.done?'complete':''}">${t.text} (Due: ${t.date||'No date'})</span>
+      <button onclick="toggleDone(${i})">${t.done?'Undo':'Done'}</button>
+      <button onclick="deleteTask(${i})">Delete</button>`;
+    ul.appendChild(li);
+  });
+  remindUndone();
+}
+function addTask() {
+  let text = document.getElementById('task').value.trim();
+  let date = document.getElementById('task-date').value;
+  if(!text) { alert('Enter task.'); return; }
+  let data = getUserData(currentUser);
+  data.tasks.push({text, date, done:false});
+  saveTasks(data.tasks);
+  showTasks();
+  document.getElementById('task').value='';
+  document.getElementById('task-date').value='';
+  showCalendar();
+}
+function deleteTask(i){
+  let data = getUserData(currentUser);
+  data.tasks.splice(i,1);
+  saveTasks(data.tasks); showTasks(); showCalendar();
+}
+function toggleDone(i){
+  let data = getUserData(currentUser);
+  data.tasks[i].done = !data.tasks[i].done;
+  saveTasks(data.tasks); showTasks(); showCalendar();
+}
+function remindUndone(){
+  let data = getUserData(currentUser);
+  let today = new Date().toISOString().split('T')[0];
+  let notDone = data.tasks.filter(t=>!t.done && t.date && t.date<=today);
+  if(notDone.length){
+    setTimeout(()=>alert('Reminder: You have ' + notDone.length + ' overdue undon tasks!'), 500);
+  }
+}
+// Calendar view for marking tasks
+function showCalendar(){
+  let monthInput = document.getElementById('month-picker').value || new Date().toISOString().slice(0,7);
+  document.getElementById('month-picker').value = monthInput;
+  let [year,month] = monthInput.split('-').map(Number);
+  let first=new Date(year,month-1,1), last=new Date(year,month,0), cal='';
+  let data = getUserData(currentUser);
+  for(let d=1;d<=last.getDate();++d){
+    let dateStr = `${year}-${(month+'').padStart(2,0)}-${(d+'').padStart(2,0)}`;
+    let tasks = data.tasks.filter(t=>t.date==dateStr);
+    cal += `<div style="display:inline-block;background:#eee;margin:2px;padding:4px;border-radius:6px;">
+      <b>${d}</b>${tasks.map(t=>'<div style="font-size:10px;">'+(t.done?'✅':'❗')+t.text+'</div>').join('')}
+      </div>`;
+  }
+  document.getElementById('calendar').innerHTML = cal;
+}
+</script>
+</body>
+</html>
